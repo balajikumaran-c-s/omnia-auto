@@ -38,66 +38,28 @@ import socket
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-import yaml
 
-from .host_func import get_module_root, load_test_config
-
-
-def _get_report_dir() -> str:
-    """Get the report output directory from test_config.yml.
-
-    Supports both relative (to test/) and absolute paths.
-    Creates the directory tree if it does not exist.
-    """
-    config = load_test_config()
-    report_path = config["report_path"]
-    if os.path.isabs(str(report_path)):
-        report_dir = str(report_path)
-    else:
-        report_dir = os.path.join(get_module_root(), str(report_path))
-    os.makedirs(report_dir, exist_ok=True)
-    return report_dir
+def _resolve_report_dir(report_path: str) -> str:
+    """Ensure the report directory exists and return its absolute path."""
+    os.makedirs(report_path, exist_ok=True)
+    return report_path
 
 
-def _get_report_name() -> str:
-    """Get the report file basename from test_config.yml."""
-    config = load_test_config()
-    return config["report_name"]
-
-
-def _get_server_info() -> Dict[str, str]:
-    """Get current server IP and hostname from test_config.yml."""
-    try:
-        config = load_test_config()
-        ip = config["oim_server_ip"] or "localhost"
-        hostname = config.get("oim_hostname", "")  # optional
-        if not hostname:
-            try:
-                hostname = socket.gethostbyaddr(ip)[0] if ip != "localhost" else "localhost"
-            except (socket.herror, socket.gaierror, OSError):
-                hostname = ip
-        return {"ip": ip, "hostname": hostname}
-    except (IOError, yaml.YAMLError, ValueError):
-        return {"ip": "localhost", "hostname": "localhost"}
-
-
-def _load_report() -> Dict[str, Any]:
+def _load_report(report_dir: str, report_name: str) -> Dict[str, Any]:
     """Load existing report JSON if present."""
-    report_name = _get_report_name()
-    report_file = os.path.join(_get_report_dir(), f"{report_name}.json")
+    report_file = os.path.join(report_dir, f"{report_name}.json")
     if os.path.exists(report_file):
         try:
             with open(report_file, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except (json.JSONDecodeError, IOError):
-            pass
+            return {"servers": {}}
     return {"servers": {}}
 
 
-def _save_json(data: Dict[str, Any]):
+def _save_json(data: Dict[str, Any], report_dir: str, report_name: str):
     """Save report data as JSON."""
-    report_name = _get_report_name()
-    with open(os.path.join(_get_report_dir(), f"{report_name}.json"), "w", encoding='utf-8') as f:
+    with open(os.path.join(report_dir, f"{report_name}.json"), "w", encoding='utf-8') as f:
         json.dump(data, f, indent=2, default=str)
 
 
@@ -1043,21 +1005,62 @@ function toggleTheme(){
 # =============================================================================
 
 class TestReport:
-    """Test report generator — organizes results by server."""
+    """Test report generator — organizes results by server.
 
-    def __init__(self, module_name: str, report_id: str = None):
+    All required values must be passed by the consumer.
+    No config files are read internally.
+    """
+
+    def __init__(
+        self,
+        module_name: str,
+        report_path: str,
+        report_name: str,
+        server_ip: str,
+        report_id: Optional[str] = None,
+        server_hostname: Optional[str] = None,
+        suite: Optional[str] = None,
+        marker: Optional[str] = None,
+        exec_command: Optional[str] = None,
+    ):
+        """Initialise a test report.
+
+        Args:
+            module_name: Scenario / module name (e.g. ``prepare``).
+            report_path: Absolute directory where JSON/HTML are saved.
+            report_name: Base filename without extension.
+            server_ip: Target server IP address.
+            report_id: Unique run identifier (default: timestamp).
+            server_hostname: Target hostname (resolved from IP if omitted).
+            suite: Suite filter label (informational).
+            marker: Marker filter label (informational).
+            exec_command: Execution command label (informational).
+        """
         self.module_name = module_name
+        self.report_path = _resolve_report_dir(report_path)
+        self.report_name = report_name
         self.report_id = report_id or datetime.now().strftime("%Y%m%d%H%M%S")
         self.start_time = datetime.now()
         self.results: List[Dict[str, Any]] = []
-        self.server_info = _get_server_info()
         self.playbook_logs = None
         self.command_type = None
         self.playbook_duration = None
 
-        self.suite = os.environ.get("OMNIA_SUITE", "all")
-        self.marker = os.environ.get("OMNIA_MARKER", "")
-        self.exec_command = os.environ.get("OMNIA_COMMAND_TYPE", "")
+        # Resolve hostname
+        if not server_hostname:
+            try:
+                server_hostname = (
+                    socket.gethostbyaddr(server_ip)[0]
+                    if server_ip not in ("", "localhost")
+                    else "localhost"
+                )
+            except (socket.herror, socket.gaierror, OSError):
+                server_hostname = server_ip
+
+        self.server_info = {"ip": server_ip, "hostname": server_hostname}
+        self.suite = suite or os.environ.get("OMNIA_SUITE", "all")
+        self.marker = marker or os.environ.get("OMNIA_MARKER", "")
+        self.exec_command = exec_command or os.environ.get("OMNIA_COMMAND_TYPE", "")
 
         print(f"\n\u250c{'\u2500'*68}\u2510")
         print(f"\u2502  {'SERVER:':<12} {self.server_info['ip']:<52} \u2502")
@@ -1160,7 +1163,7 @@ class TestReport:
             "exec_command": self.exec_command,
         }
 
-        report = _load_report()
+        report = _load_report(self.report_path, self.report_name)
         server_ip = self.server_info["ip"]
 
         if "servers" not in report:
@@ -1219,7 +1222,7 @@ class TestReport:
             }
             runs.append(run_data)
 
-        _save_json(report)
+        _save_json(report, self.report_path, self.report_name)
 
         # Use accumulated run-level totals for the banner
         current_run = next(
@@ -1239,12 +1242,10 @@ class TestReport:
             banner_passed, banner_failed, banner_skipped = passed, failed, skipped
             banner_duration = duration
 
-        report_name = _get_report_name()
-        report_dir = _get_report_dir()
-        json_path = os.path.join(report_dir, f"{report_name}.json")
-        html_path = os.path.join(report_dir, f"{report_name}.html")
+        json_path = os.path.join(self.report_path, f"{self.report_name}.json")
+        html_path = os.path.join(self.report_path, f"{self.report_name}.html")
 
-        html_file = os.path.join(report_dir, f"{report_name}.html")
+        html_file = html_path
         with open(html_file, 'w', encoding='utf-8') as f:
             f.write(_generate_html(report))
 

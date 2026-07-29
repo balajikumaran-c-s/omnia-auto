@@ -111,7 +111,7 @@ def run_playbook(
     pb_workdir = playbook_workdir or config.get("playbook_workdir", "src")
     workdir = os.path.join(clone_path, pb_workdir)
 
-    logger_name = get_setting("runner_logger_name", "playbook_runner")
+    logger_name = get_setting("runner_logger_name", "playbook_runner")  # safe default
     log = TestLogger(logger_name)
 
     password = credentials.get("oim_password", "")
@@ -162,7 +162,7 @@ def _build_ansible_cmd(
 
     parts = [
         f"cd {workdir} &&",
-        f"COLUMNS={get_setting('line_width', 160)} ansible-playbook {playbook}{v_flag}",
+        f"COLUMNS={get_setting('line_width', 160)} ansible-playbook {playbook}{v_flag}",  # 160 safe default
     ]
 
     if extra_vars:
@@ -336,7 +336,7 @@ def _stream_cmd(
 
 def _print_wrapped(line: str, prefix: str) -> None:
     """Print a line, wrapping at configured line_width."""
-    width = get_setting("line_width", 160)
+    width = get_setting("line_width", 160)  # 160 safe default
     while line:
         chunk = line[:width]
         line = line[width:]

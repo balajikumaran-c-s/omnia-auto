@@ -15,11 +15,13 @@
 """
 Testinfra host, configuration, and credential utilities.
 
-All file names and paths come from ``configure()`` — nothing is
-hard-wired to a particular module.
+Every function accepts its required paths as parameters.
+When a parameter is not passed, the value is looked up from
+``get_setting()`` — which itself only returns what the consumer
+configured via ``configure()``.
 
 Handles:
-- Config YAML loading (file name from ``get_setting("config_file")``)
+- Config YAML loading
 - Credentials loading + Ansible Vault encryption
 - Testinfra host connection (local or remote SSH)
 - Local vs remote execution detection
@@ -28,7 +30,7 @@ Handles:
 import os
 import subprocess
 import tempfile
-from typing import Dict, Any
+from typing import Dict, Any, Optional, Tuple
 
 import yaml
 import testinfra
@@ -40,34 +42,73 @@ from ..vars.common_vars import get_module_root, get_setting
 # CONFIG LOADING
 # =============================================================================
 
-def _get_config_path() -> str:
-    """Get the config file path using configured file name."""
-    return os.path.join(
-        get_module_root(), get_setting("config_file", "test_config.yml"),
-    )
+def _resolve_config_path(config_path: Optional[str] = None) -> str:
+    """Resolve the config file path.
+
+    Args:
+        config_path: Explicit path.  When ``None``, built from
+                     ``module_root`` + ``config_file`` setting.
+
+    Raises:
+        RuntimeError: If neither param nor setting is available.
+    """
+    if config_path:
+        return config_path
+    config_file = get_setting("config_file")
+    if not config_file:
+        raise RuntimeError(
+            "config_file not configured. "
+            "Pass config_path= or call configure(config_file=...)."
+        )
+    return os.path.join(get_module_root(), config_file)
 
 
-def _get_credentials_paths() -> tuple:
-    """Get credentials file and key file paths using configured names."""
+def _resolve_credentials_paths(
+    creds_path: Optional[str] = None,
+    key_path: Optional[str] = None,
+) -> Tuple[str, str]:
+    """Resolve credentials file and key file paths.
+
+    Args:
+        creds_path: Explicit credentials file path.
+        key_path: Explicit vault key file path.
+
+    Raises:
+        RuntimeError: If neither param nor setting is available.
+    """
     root = get_module_root()
-    creds_path = os.path.join(
-        root, get_setting("credentials_file", "test_creds.yml"),
-    )
-    key_path = os.path.join(
-        root, get_setting("credentials_key", ".test_creds.key"),
-    )
+    if not creds_path:
+        creds_file = get_setting("credentials_file")
+        if not creds_file:
+            raise RuntimeError(
+                "credentials_file not configured. "
+                "Pass creds_path= or call configure(credentials_file=...)."
+            )
+        creds_path = os.path.join(root, creds_file)
+    if not key_path:
+        key_file = get_setting("credentials_key")
+        if not key_file:
+            raise RuntimeError(
+                "credentials_key not configured. "
+                "Pass key_path= or call configure(credentials_key=...)."
+            )
+        key_path = os.path.join(root, key_file)
     return creds_path, key_path
 
 
-def load_test_config() -> Dict[str, Any]:
-    """Load test configuration from the configured config file.
+def load_test_config(config_path: Optional[str] = None) -> Dict[str, Any]:
+    """Load test configuration from a YAML file.
+
+    Args:
+        config_path: Explicit file path.  When ``None``, resolved
+                     from ``configure(config_file=...)``.
 
     Returns:
-        Dict containing the configuration.
+        Dict containing the configuration, or empty dict if not found.
     """
-    config_path = _get_config_path()
-    if os.path.exists(config_path):
-        with open(config_path, "r", encoding="utf-8") as f:
+    path = _resolve_config_path(config_path)
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
             return yaml.safe_load(f) or {}
     return {}
 
@@ -136,8 +177,15 @@ def _encrypt_vault_file(config_path: str, key_path: str) -> bool:
         ) from None
 
 
-def load_test_credentials() -> Dict[str, Any]:
+def load_test_credentials(
+    creds_path: Optional[str] = None,
+    key_path: Optional[str] = None,
+) -> Dict[str, Any]:
     """Load test credentials with automatic vault encryption.
+
+    Args:
+        creds_path: Explicit credentials file path.
+        key_path: Explicit vault key file path.
 
     Behavior:
     - Encrypted + key exists: decrypt and return
@@ -145,7 +193,7 @@ def load_test_credentials() -> Dict[str, Any]:
     - Plain: read, create key, encrypt, return
     - Not found: return empty dict
     """
-    creds_path, key_path = _get_credentials_paths()
+    creds_path, key_path = _resolve_credentials_paths(creds_path, key_path)
 
     if not os.path.exists(creds_path):
         return {}
@@ -167,9 +215,17 @@ def load_test_credentials() -> Dict[str, Any]:
     return creds
 
 
-def encrypt_test_credentials() -> bool:
-    """Encrypt test_creds.yml if not already encrypted."""
-    creds_path, key_path = _get_credentials_paths()
+def encrypt_test_credentials(
+    creds_path: Optional[str] = None,
+    key_path: Optional[str] = None,
+) -> bool:
+    """Encrypt credentials file if not already encrypted.
+
+    Args:
+        creds_path: Explicit credentials file path.
+        key_path: Explicit vault key file path.
+    """
+    creds_path, key_path = _resolve_credentials_paths(creds_path, key_path)
 
     if not os.path.exists(creds_path):
         return False

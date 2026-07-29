@@ -224,3 +224,132 @@ class TestLogger:
     def get_output(self) -> str:
         """Get all captured output."""
         return "\n".join(self._output_lines)
+
+
+# =============================================================================
+# SESSION RESULTS — shared summary table for all consumer modules
+# =============================================================================
+
+_SESSION_RESULTS = []
+
+
+def add_session_result(
+    test_name: str,
+    status: str,
+    duration: float,
+    tc_id: str = "",
+) -> None:
+    """Append a test result for the session summary table.
+
+    Args:
+        test_name: Short test function name.
+        status: ``PASSED``, ``FAILED``, or ``SKIPPED``.
+        duration: Duration in seconds.
+        tc_id: Test case ID (e.g. ``TC_PR_001``).
+    """
+    _SESSION_RESULTS.append({
+        "test_name": test_name,
+        "tc_id": tc_id,
+        "status": status,
+        "duration": duration,
+    })
+
+
+def get_session_results():
+    """Return the accumulated session results list."""
+    return _SESSION_RESULTS
+
+
+def clear_session_results():
+    """Clear accumulated session results."""
+    _SESSION_RESULTS.clear()
+
+
+def print_summary_table() -> None:
+    """Print a formatted test execution summary table.
+
+    Respects environment variables:
+    - ``OMNIA_RESULTS_FILE`` — export results to JSON for aggregation
+    - ``OMNIA_SUPPRESS_SUMMARY`` — skip printing (shell wrapper prints combined)
+    """
+    import json as _json
+
+    if not _SESSION_RESULTS:
+        return
+
+    results_file = os.environ.get("OMNIA_RESULTS_FILE", "")
+    if results_file:
+        existing = []
+        if os.path.isfile(results_file):
+            try:
+                with open(results_file, "r", encoding="utf-8") as fh:
+                    existing = _json.load(fh)
+            except (_json.JSONDecodeError, OSError):
+                existing = []
+        existing.extend(_SESSION_RESULTS)
+        with open(results_file, "w", encoding="utf-8") as fh:
+            _json.dump(existing, fh)
+
+    if os.environ.get("OMNIA_SUPPRESS_SUMMARY", ""):
+        return
+
+    _render_summary(_SESSION_RESULTS)
+
+
+def _render_summary(results) -> None:
+    """Render the summary table to stdout."""
+    if not results:
+        return
+
+    passed = [r for r in results if r["status"] == "PASSED"]
+    failed = [r for r in results if r["status"] == "FAILED"]
+    skipped = [r for r in results if r["status"] == "SKIPPED"]
+    total = len(results)
+
+    sep = "=" * 85
+    print(f"\n{sep}")
+    print("  TEST EXECUTION SUMMARY")
+    print(sep)
+    print(
+        f"  {'TC ID':<12} {'Test Name':<40} "
+        f"{'Status':<10} {'Duration':>8}"
+    )
+    print(
+        f"  {'-' * 12} {'-' * 40} "
+        f"{'-' * 10} {'-' * 8}"
+    )
+
+    for r in results:
+        tc_id = r.get("tc_id", "")
+        name = r["test_name"]
+        if len(name) > 39:
+            name = name[:36] + "..."
+        status = r["status"]
+        dur = f"{r['duration']:.2f}s"
+        if status == "PASSED":
+            tag = f"{Colors.GREEN}{status}{Colors.RESET}"
+        elif status == "FAILED":
+            tag = f"{Colors.RED}{status}{Colors.RESET}"
+        else:
+            tag = f"{Colors.YELLOW}{status}{Colors.RESET}"
+        print(
+            f"  {Colors.CYAN}{tc_id:<12}{Colors.RESET} "
+            f"{Colors.CYAN}{name}{Colors.RESET}"
+            f"{' ' * max(1, 40 - len(name))} "
+            f"{tag:<19} {dur:>8}"
+        )
+
+    print(
+        f"  {'-' * 12} {'-' * 40} "
+        f"{'-' * 10} {'-' * 8}"
+    )
+    total_dur = sum(r["duration"] for r in results)
+    print(
+        f"  {Colors.GREEN}{len(passed)} passed{Colors.RESET}, "
+        f"{Colors.RED}{len(failed)} failed{Colors.RESET}, "
+        f"{Colors.YELLOW}{len(skipped)} skipped{Colors.RESET} "
+        f"/ {total} total "
+        f"({total_dur:.2f}s)"
+    )
+    print(sep)
+    print()

@@ -49,6 +49,10 @@ from .functions.formatting_func import (
     set_debug_mode,
     TestLogger,
     get_test_output,
+    add_session_result,
+    get_session_results,
+    clear_session_results,
+    print_summary_table,
 )
 
 # --- Host / Config ---
@@ -88,6 +92,10 @@ __all__ = [
     "set_debug_mode",
     "TestLogger",
     "get_test_output",
+    "add_session_result",
+    "get_session_results",
+    "clear_session_results",
+    "print_summary_table",
     # Host
     "get_testinfra_host",
     "load_test_config",

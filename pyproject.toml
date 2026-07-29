@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omnia-auto"
+version = "0.1.0"
+description = "Plug-and-play test automation utilities for Dell Omnia modules"
+readme = "README.md"
+license = "Apache-2.0"
+authors = [
+    {name = "Balaji Kumaran", email = "balajikumaran.cs@dell.com"}
+]
+keywords = ["testing", "automation", "omnia", "dell", "pytest", "testinfra"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "pytest>=7.0.0",
+    "pytest-testinfra>=9.0.0",
+    "PyYAML>=6.0",
+    "paramiko>=3.0.0",
+]
+
+[project.optional-dependencies]
+dev = ["build", "twine", "pytest-cov", "black", "pylint"]
+
+[project.urls]
+Homepage = "https://github.com/balajikumaran-c-s/omnia-auto"
+Repository = "https://github.com/balajikumaran-c-s/omnia-auto.git"
+Issues = "https://github.com/balajikumaran-c-s/omnia-auto/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]

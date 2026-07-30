@@ -9,8 +9,8 @@ Provides reusable functions for formatting, host connectivity, playbook executio
 
 ## Features
 
-- **Formatting** — ANSI colors, Unicode symbols, structured `TestLogger`
-- **Host / Config** — YAML config loading, Ansible Vault credential encryption, testinfra host connection
+- **Formatting** — ANSI colors, Unicode symbols, structured `TestLogger`, session summary table
+- **Host / Config** — YAML config loading, Ansible Vault credentials, testinfra host, `connection_params()`, `read_remote_env()`, `ensure_remote_dir()`, `resolve_domain_input_path()`
 - **Runner** — `run_playbook()` with live output streaming, timeout, SSH wrapping
 - **Sync** — `clone_repo()` and `sync_files()` for local or SSH file transfer
 - **Report** — `TestReport` for JSON and HTML test result generation
@@ -110,7 +110,7 @@ omnia-auto/
     ├── __init__.py                 # Public API exports
     ├── functions/
     │   ├── formatting_func.py      # Colors, Symbols, TestLogger, log()
-    │   ├── host_func.py            # Config/credentials loading, testinfra host
+    │   ├── host_func.py            # Config, credentials, testinfra, connection_params, read_remote_env
     │   ├── report_func.py          # TestReport (JSON + HTML)
     │   ├── runner_func.py          # run_playbook() with live streaming
     │   └── sync_func.py            # clone_repo(), sync_files()

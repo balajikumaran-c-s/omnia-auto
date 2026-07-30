@@ -36,6 +36,7 @@ import yaml
 import testinfra
 
 from ..vars.common_vars import get_module_root, get_setting
+from .formatting_func import log
 
 
 # =============================================================================
@@ -338,3 +339,166 @@ def run_on_host(host, cmd: str):
     return host.run(cmd)
 
 
+# =============================================================================
+# MONOREPO HOST UTILITIES
+# =============================================================================
+
+# Default env file — overridable via configure(env_file=...)
+_DEFAULT_ENV_FILE = "/etc/omnia/omnia.env"
+
+
+def connection_params() -> dict:
+    """Build mode / ip / user / password / ssh_opts from test config.
+
+    Returns a dict ready to unpack into ``sync_files()`` or other
+    functions that need SSH connection details::
+
+        conn = connection_params()
+        sync_files(mode=conn["mode"], ip=conn["ip"], ...)
+
+    Returns:
+        Dict with keys: mode, ip, user, password, ssh_opts.
+
+    Raises:
+        ValueError: If required config keys are missing for remote mode.
+    """
+    config = load_test_config()
+    creds = load_test_credentials()
+    local = is_local_execution()
+
+    if not local:
+        oim_ip = config.get("oim_server_ip", "").strip()
+        if not oim_ip:
+            raise ValueError(
+                "oim_server_ip is required in test_config.yml "
+                "for remote (SSH) execution"
+            )
+        oim_user = config.get("oim_ssh_user", "").strip()
+        if not oim_user:
+            raise ValueError(
+                "oim_ssh_user is required in test_config.yml "
+                "for remote (SSH) execution"
+            )
+    else:
+        oim_ip = None
+        oim_user = config.get("oim_ssh_user", "root")
+
+    return {
+        "mode": "local" if local else "ssh",
+        "ip": oim_ip,
+        "user": oim_user,
+        "password": creds.get("oim_password") or None,
+        "ssh_opts": get_setting(
+            "ssh_opts",
+            "-o StrictHostKeyChecking=no "
+            "-o UserKnownHostsFile=/dev/null "
+            "-o LogLevel=ERROR",
+        ),
+    }
+
+
+def read_remote_env(
+    host, var_name: str, env_file: str = None
+) -> str:
+    """Read an environment variable from the target host via testinfra.
+
+    Sources the specified env file first so that variables set by
+    setup scripts are available even in non-login SSH sessions
+    (testinfra uses non-login shells which skip ``/etc/profile.d/``).
+
+    No fallback values — if the variable is not set on the target,
+    a ``ValueError`` is raised.  The consumer module is responsible
+    for passing the correct variable name.
+
+    Args:
+        host: Testinfra host object.
+        var_name: Environment variable name (e.g. ``OMNIA_DATA_PATH``).
+            The consumer passes this — the pip module has no knowledge
+            of which variables exist.
+        env_file: Path to the env file on the target host to source
+            before reading.  Defaults to ``configure(env_file=...)``
+            or ``/etc/omnia/omnia.env``.
+
+    Returns:
+        The env var value, stripped.
+
+    Raises:
+        ValueError: If the variable is unset or empty on the target.
+    """
+    ef = env_file or get_setting("env_file", _DEFAULT_ENV_FILE)
+    cmd = (
+        f"test -f {ef} && set -a && . {ef} && set +a; "
+        f"echo ${{{var_name}}}"
+    )
+    result = host.run(cmd)
+    value = result.stdout.strip() if result.rc == 0 else ""
+    if not value:
+        raise ValueError(
+            f"Environment variable '{var_name}' is not set on the "
+            f"target host.  Ensure the environment has been set up "
+            f"and {ef} contains {var_name}."
+        )
+    return value
+
+
+def ensure_remote_dir(host, path: str) -> None:
+    """Create a directory on the target if it does not exist.
+
+    Uses ``mkdir -p`` via testinfra so syncing won't fail when the
+    playbook hasn't been run yet.
+
+    Args:
+        host: Testinfra host object.
+        path: Absolute path to create on the target.
+
+    Raises:
+        ValueError: If path is empty.
+        RuntimeError: If the directory cannot be created.
+    """
+    if not path:
+        raise ValueError("path is required for ensure_remote_dir")
+    result = host.run(f"mkdir -p {path}")
+    if result.rc != 0:
+        raise RuntimeError(
+            f"Failed to create remote directory '{path}': "
+            f"{result.stderr.strip()}"
+        )
+    log(f"Ensured remote directory exists: {path}", "DEBUG")
+
+
+def resolve_domain_input_path(
+    host, domain: str, data_path_var: str, project_var: str
+) -> str:
+    """Build the remote input directory for a domain from target env vars.
+
+    Reads the specified environment variables from the target and
+    assembles::
+
+        <data_path>/<domain>/input/<project>/
+
+    No hardcoded paths — the consumer passes the env var **names**
+    and the function reads their values from the target.  Both env
+    vars must be set or a ``ValueError`` is raised.
+
+    Args:
+        host: Testinfra host object.
+        domain: Domain name (e.g. ``image_build_manager``).
+            The consumer defines this in its own vars file.
+        data_path_var: Env var name for data path
+            (e.g. ``OMNIA_DATA_PATH``).  Consumer passes this.
+        project_var: Env var name for project name
+            (e.g. ``OMNIA_PROJECT_NAME``).  Consumer passes this.
+
+    Returns:
+        Absolute path string on the target.
+
+    Raises:
+        ValueError: If domain is empty or either env var is unset.
+    """
+    if not domain:
+        raise ValueError("domain is required for resolve_domain_input_path")
+    data_path = read_remote_env(host, data_path_var)
+    project = read_remote_env(host, project_var)
+    remote_input = f"{data_path}/{domain}/input/{project}"
+    log(f"Resolved remote input path: {remote_input}", "INFO")
+    return remote_input

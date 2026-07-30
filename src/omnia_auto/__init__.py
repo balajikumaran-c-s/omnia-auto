@@ -63,6 +63,10 @@ from .functions.host_func import (
     run_on_host,
     is_local_execution,
     encrypt_test_credentials,
+    connection_params,
+    read_remote_env,
+    ensure_remote_dir,
+    resolve_domain_input_path,
 )
 
 # --- Report ---
@@ -103,6 +107,10 @@ __all__ = [
     "run_on_host",
     "is_local_execution",
     "encrypt_test_credentials",
+    "connection_params",
+    "read_remote_env",
+    "ensure_remote_dir",
+    "resolve_domain_input_path",
     # Report
     "TestReport",
     "get_current_report",

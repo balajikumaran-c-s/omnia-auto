@@ -77,8 +77,8 @@ def run_playbook(
     targets, and streams output line-by-line in the calling thread.
 
     Args:
-        playbook: Playbook filename (default from test_config.yml
-                  ``playbook_entry_point``, or ``site.yml``).
+        playbook: Playbook filename.  **Required** — consumer must
+                  pass this from its own vars (no fallback).
         tag: Ansible tag(s) (optional). Accepts a single string
              (``"prepare"``), a list (``["prepare", "build"]``),
              or ``None`` to run without ``--tags``.
@@ -87,8 +87,8 @@ def run_playbook(
         timeout: Max seconds to wait (default from configure()).
         limit: Ansible ``--limit`` pattern.
         playbook_workdir: Subdirectory under clone_path where the
-                          playbook lives (default from test_config.yml
-                          ``playbook_workdir``, or ``src``).
+                          playbook lives.  **Required** — consumer
+                          must pass this from its own vars.
 
     Returns:
         Dict with keys: success, rc, output, duration, error, playbook.
@@ -100,16 +100,20 @@ def run_playbook(
     v = verbosity if verbosity is not None else get_setting("default_verbosity", 1)
     t = timeout if timeout is not None else get_setting("default_timeout", 7200)
 
-    clone_path = config.get("clone_path", "")
-    if not clone_path:
-        return _fail(
-            playbook or "unknown", 0.0,
-            "'clone_path' not set in test config",
-        )
+    clone_path = config.get("clone_path", "/root/omnia")
     if playbook is None:
-        playbook = config.get("playbook_entry_point", "site.yml")
-    pb_workdir = playbook_workdir or config.get("playbook_workdir", "src")
-    workdir = os.path.join(clone_path, pb_workdir)
+        return _fail(
+            "unknown", 0.0,
+            "'playbook' argument is required — consumer must pass "
+            "the playbook filename from its own vars",
+        )
+    if not playbook_workdir:
+        return _fail(
+            playbook, 0.0,
+            "'playbook_workdir' argument is required — consumer must "
+            "pass the workdir from its own vars",
+        )
+    workdir = os.path.join(clone_path, playbook_workdir)
 
     logger_name = get_setting("runner_logger_name", "playbook_runner")  # safe default
     log = TestLogger(logger_name)
@@ -142,7 +146,7 @@ def run_playbook(
     ))
     log.check(RUNNER_LOG_MSGS["streaming_output"])
 
-    return _stream_cmd(cmd, playbook, t, tag, config, pb_workdir)
+    return _stream_cmd(cmd, playbook, t, tag, config, playbook_workdir)
 
 
 # =====================================================================

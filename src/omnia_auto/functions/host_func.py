@@ -15,16 +15,14 @@
 """
 Testinfra host, configuration, and credential utilities.
 
-Every function accepts its required paths as parameters.
-When a parameter is not passed, the value is looked up from
-``get_setting()`` — which itself only returns what the consumer
-configured via ``configure()``.
-
 Handles:
 - Config YAML loading
-- Credentials loading + Ansible Vault encryption
+- Credentials loading with Ansible Vault encryption
 - Testinfra host connection (local or remote SSH)
 - Local vs remote execution detection
+- Remote environment variable reading
+- Remote directory management
+- Domain input path resolution
 """
 
 import os
@@ -343,7 +341,6 @@ def run_on_host(host, cmd: str):
 # MONOREPO HOST UTILITIES
 # =============================================================================
 
-# Default env file — overridable via configure(env_file=...)
 _DEFAULT_ENV_FILE = "/etc/omnia/omnia.env"
 
 
@@ -400,30 +397,23 @@ def connection_params() -> dict:
 def read_remote_env(
     host, var_name: str, env_file: str = None
 ) -> str:
-    """Read an environment variable from the target host via testinfra.
+    """Read an environment variable from the target host.
 
-    Sources the specified env file first so that variables set by
-    setup scripts are available even in non-login SSH sessions
-    (testinfra uses non-login shells which skip ``/etc/profile.d/``).
-
-    No fallback values — if the variable is not set on the target,
-    a ``ValueError`` is raised.  The consumer module is responsible
-    for passing the correct variable name.
+    Sources the env file before reading so that variables defined
+    by setup scripts are available in non-login SSH sessions.
 
     Args:
         host: Testinfra host object.
         var_name: Environment variable name (e.g. ``OMNIA_DATA_PATH``).
-            The consumer passes this — the pip module has no knowledge
-            of which variables exist.
-        env_file: Path to the env file on the target host to source
-            before reading.  Defaults to ``configure(env_file=...)``
-            or ``/etc/omnia/omnia.env``.
+        env_file: Path to the env file on the target host.
+            Defaults to ``configure(env_file=...)`` or
+            ``/etc/omnia/omnia.env``.
 
     Returns:
-        The env var value, stripped.
+        The variable value, stripped.
 
     Raises:
-        ValueError: If the variable is unset or empty on the target.
+        ValueError: If the variable is not set or empty on the target.
     """
     ef = env_file or get_setting("env_file", _DEFAULT_ENV_FILE)
     cmd = (
@@ -444,16 +434,13 @@ def read_remote_env(
 def ensure_remote_dir(host, path: str) -> None:
     """Create a directory on the target if it does not exist.
 
-    Uses ``mkdir -p`` via testinfra so syncing won't fail when the
-    playbook hasn't been run yet.
-
     Args:
         host: Testinfra host object.
         path: Absolute path to create on the target.
 
     Raises:
-        ValueError: If path is empty.
-        RuntimeError: If the directory cannot be created.
+        ValueError: If *path* is empty.
+        RuntimeError: If ``mkdir -p`` fails.
     """
     if not path:
         raise ValueError("path is required for ensure_remote_dir")
@@ -469,31 +456,24 @@ def ensure_remote_dir(host, path: str) -> None:
 def resolve_domain_input_path(
     host, domain: str, data_path_var: str, project_var: str
 ) -> str:
-    """Build the remote input directory for a domain from target env vars.
+    """Build the remote input directory for a domain.
 
-    Reads the specified environment variables from the target and
-    assembles::
-
-        <data_path>/<domain>/input/<project>/
-
-    No hardcoded paths — the consumer passes the env var **names**
-    and the function reads their values from the target.  Both env
-    vars must be set or a ``ValueError`` is raised.
+    Reads the given environment variables from the target and
+    assembles ``<data_path>/<domain>/input/<project>/``.
 
     Args:
         host: Testinfra host object.
         domain: Domain name (e.g. ``image_build_manager``).
-            The consumer defines this in its own vars file.
-        data_path_var: Env var name for data path
-            (e.g. ``OMNIA_DATA_PATH``).  Consumer passes this.
-        project_var: Env var name for project name
-            (e.g. ``OMNIA_PROJECT_NAME``).  Consumer passes this.
+        data_path_var: Name of the env var holding the data path
+            (e.g. ``OMNIA_DATA_PATH``).
+        project_var: Name of the env var holding the project name
+            (e.g. ``OMNIA_PROJECT_NAME``).
 
     Returns:
         Absolute path string on the target.
 
     Raises:
-        ValueError: If domain is empty or either env var is unset.
+        ValueError: If *domain* is empty or either env var is unset.
     """
     if not domain:
         raise ValueError("domain is required for resolve_domain_input_path")

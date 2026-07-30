@@ -13,15 +13,10 @@
 # limitations under the License.
 
 """
-Generic clone and file-sync utilities.
+Clone and file-sync utilities.
 
-**Plug-and-play** — the consumer passes every parameter.
-The package reads nothing from config; it only executes.
-
-Two functions only:
-
-- ``clone_repo``  — clone / pull a git repo (local or SSH)
-- ``sync_files``  — rsync a path (dir or file) (local or SSH)
+- ``clone_repo``  — clone or pull a git repository (local or SSH)
+- ``sync_files``  — rsync a path (directory or file) (local or SSH)
 
 Usage from a consumer module::
 

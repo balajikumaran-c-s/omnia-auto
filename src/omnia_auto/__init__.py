@@ -13,10 +13,10 @@
 # limitations under the License.
 
 """
-omnia-auto — Shared Test Automation Utilities for Omnia
+omnia-auto — Shared Test Automation Utilities for Omnia.
 
-Plug-and-play library: all values come from the consumer via
-``configure()`` — no module-specific defaults are baked in.
+Provides formatting, host connectivity, playbook execution,
+file synchronisation, and test reporting utilities.
 
 Usage::
 

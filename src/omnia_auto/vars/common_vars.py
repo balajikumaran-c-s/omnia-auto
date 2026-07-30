@@ -13,12 +13,12 @@
 # limitations under the License.
 
 """
-omnia-auto — Central Configuration
+omnia-auto — Central Configuration.
 
-Consumer modules **must** call ``configure()`` to supply every setting
-they need.  No file names, credentials, or SSH options are hard-wired.
+Provides ``configure()`` and ``get_setting()`` for package-wide
+settings management.
 
-Usage (from the consumer's conftest.py)::
+Usage::
 
     import omnia_auto
     omnia_auto.configure(
@@ -26,7 +26,6 @@ Usage (from the consumer's conftest.py)::
         config_file      = "test_config.yml",
         credentials_file = "test_creds.yml",
         credentials_key  = ".test_creds.key",
-        ssh_opts         = "-o StrictHostKeyChecking=no ...",
         default_timeout  = 3600,
     )
 """
@@ -34,11 +33,10 @@ Usage (from the consumer's conftest.py)::
 import os
 
 # =============================================================================
-# SETTINGS STORE — empty until consumer calls configure()
+# SETTINGS STORE
 # =============================================================================
 
 _settings: dict = {
-    # --- Sensible defaults — consumer can override via configure() ---
     "ssh_opts": (
         "-o StrictHostKeyChecking=no "
         "-o UserKnownHostsFile=/dev/null "
@@ -63,10 +61,11 @@ _settings: dict = {
 # =============================================================================
 
 def configure(**kwargs) -> None:
-    """Set or override package settings from the consumer module.
+    """Set or override package settings.
 
-    Every value the package needs must be supplied here.
-    Unknown keys are accepted — modules can stash custom settings.
+    Accepts any keyword argument.  Standard keys are listed in the
+    example below; additional keys are stored and retrievable via
+    ``get_setting()``.
 
     Example::
 
@@ -95,12 +94,10 @@ def get_setting(key: str, default=None):
 
     Args:
         key: Setting name.
-        default: Value returned when the key was never configured.
-                 Callers should avoid relying on this — set all
-                 values via ``configure()`` instead.
+        default: Fallback if the key has not been configured.
 
     Returns:
-        The stored value, or *default* if not configured.
+        The stored value, or *default*.
     """
     val = _settings.get(key)
     return val if val is not None else default

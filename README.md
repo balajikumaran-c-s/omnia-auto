@@ -5,7 +5,7 @@
 
 Plug-and-play test automation utilities for [Dell Omnia](https://github.com/dell/omnia) modules.
 
-Provides reusable functions for formatting, host connectivity, playbook execution, file synchronisation, and test reporting — with **zero hardcoded values**. Every setting is driven by the consumer module via `configure()`.
+Provides reusable functions for formatting, host connectivity, playbook execution, file synchronisation, and test reporting.
 
 ## Features
 

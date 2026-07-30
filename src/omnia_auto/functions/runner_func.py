@@ -77,18 +77,16 @@ def run_playbook(
     targets, and streams output line-by-line in the calling thread.
 
     Args:
-        playbook: Playbook filename.  **Required** — consumer must
-                  pass this from its own vars (no fallback).
-        tag: Ansible tag(s) (optional). Accepts a single string
+        playbook: Playbook filename (e.g. ``image_build_manager.yml``).
+        tag: Ansible tag(s). Accepts a single string
              (``"prepare"``), a list (``["prepare", "build"]``),
              or ``None`` to run without ``--tags``.
         extra_vars: Extra ``-e key=value`` pairs.
-        verbosity: Ansible verbosity 0-4 (default from configure()).
-        timeout: Max seconds to wait (default from configure()).
+        verbosity: Ansible verbosity 0-4.
+        timeout: Max seconds to wait.
         limit: Ansible ``--limit`` pattern.
-        playbook_workdir: Subdirectory under clone_path where the
-                          playbook lives.  **Required** — consumer
-                          must pass this from its own vars.
+        playbook_workdir: Subdirectory under ``clone_path`` where
+                          the playbook lives.
 
     Returns:
         Dict with keys: success, rc, output, duration, error, playbook.
@@ -104,14 +102,12 @@ def run_playbook(
     if playbook is None:
         return _fail(
             "unknown", 0.0,
-            "'playbook' argument is required — consumer must pass "
-            "the playbook filename from its own vars",
+            "'playbook' argument is required",
         )
     if not playbook_workdir:
         return _fail(
             playbook, 0.0,
-            "'playbook_workdir' argument is required — consumer must "
-            "pass the workdir from its own vars",
+            "'playbook_workdir' argument is required",
         )
     workdir = os.path.join(clone_path, playbook_workdir)
 

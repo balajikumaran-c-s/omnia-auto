@@ -1,11 +1,6 @@
 # omnia-auto — Usage Guide
 
 Complete function reference for the `omnia-auto` package.
-Every function is documented with **inputs**, **outputs**, **errors**, and **examples**.
-
-> **Design principle:** Zero hardcoded values.
-> The consumer module passes all paths, variable names, and settings.
-> If a required value is missing, the function raises an error — never falls back silently.
 
 ---
 
@@ -43,7 +38,7 @@ Initialize the package. Call **once** at the top of your `conftest.py`.
 | `line_width` | `int` | No | Terminal output line width |
 | `runner_logger_name` | `str` | No | Logger name for `run_playbook` |
 
-Any extra key-value pairs are stored and retrievable with `get_setting()`.
+Additional key-value pairs are stored and retrievable with `get_setting()`.
 
 ```python
 import os, omnia_auto
@@ -371,8 +366,6 @@ setup scripts are available even in non-login SSH shells.
 |---------|--------------------------------------|
 | **Raises** | `ValueError` if the variable is **not set or empty** on the target |
 
-**No fallback values.** If the variable is missing, the function raises — never returns a silent default.
-
 ```python
 from omnia_auto import get_testinfra_host, read_remote_env
 
@@ -416,25 +409,18 @@ Assembles: `<data_path>/<domain>/input/<project>/`
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `host` | `Host` | **Yes** | Testinfra host object |
-| `domain` | `str` | **Yes** | Domain name (e.g. `"image_build_manager"`) — consumer defines this in its own vars |
-| `data_path_var` | `str` | **Yes** | Env var name for the data path (e.g. `"OMNIA_DATA_PATH"`) — consumer passes this |
-| `project_var` | `str` | **Yes** | Env var name for the project (e.g. `"OMNIA_PROJECT_NAME"`) — consumer passes this |
+| `domain` | `str` | **Yes** | Domain name (e.g. `"image_build_manager"`) |
+| `data_path_var` | `str` | **Yes** | Env var name for the data path (e.g. `"OMNIA_DATA_PATH"`) |
+| `project_var` | `str` | **Yes** | Env var name for the project (e.g. `"OMNIA_PROJECT_NAME"`) |
 
 | Returns | `str` — absolute path on the target |
 |---------|--------------------------------------|
 | **Raises** | `ValueError` if `domain` is empty or either env var is not set on target |
 
-**No hardcoded paths.** The consumer passes the env var **names** and the function reads their values from the target.
-
 ```python
 from omnia_auto import get_testinfra_host, resolve_domain_input_path
 
 host = get_testinfra_host()
-
-# Consumer defines these in its own vars/common_vars.py:
-# DOMAIN_NAME = "image_build_manager"
-# ENV_OMNIA_DATA_PATH = "OMNIA_DATA_PATH"
-# ENV_OMNIA_PROJECT_NAME = "OMNIA_PROJECT_NAME"
 
 path = resolve_domain_input_path(
     host,
@@ -451,8 +437,7 @@ path = resolve_domain_input_path(
 
 **Source:** `functions/sync_func.py`
 
-Both functions are **fully parameter-driven**. The consumer passes everything.
-The package reads nothing from config files for sync operations.
+Both functions accept all parameters explicitly.
 
 ### `clone_repo(mode, url, dest, ...) -> dict`
 
@@ -531,13 +516,13 @@ Wraps the command in SSH for remote targets automatically.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `playbook` | `str` | **Yes** | Playbook filename — consumer must pass this from its own vars |
+| `playbook` | `str` | **Yes** | Playbook filename (e.g. `"image_build_manager.yml"`) |
 | `tag` | `str` or `list` | No | Ansible tag(s): `"prepare"` or `["prepare", "build"]` |
 | `extra_vars` | `dict` | No | Extra `-e key=value` pairs |
 | `verbosity` | `int` | No | Ansible `-v` level 0-4 |
 | `timeout` | `int` | No | Max seconds to wait |
 | `limit` | `str` | No | Ansible `--limit` pattern |
-| `playbook_workdir` | `str` | **Yes** | Subdir under `clone_path` — consumer must pass this from its own vars |
+| `playbook_workdir` | `str` | **Yes** | Subdir under `clone_path` (e.g. `"src/image_build_manager/playbooks"`) |
 
 | Returns | `dict` with keys |
 |---------|------------------|
@@ -548,9 +533,8 @@ Wraps the command in SSH for remote targets automatically.
 | `error` | `str` — error message if failed |
 | `playbook` | `str` — playbook filename used |
 
-**Important:** `playbook` and `playbook_workdir` are **required** — no fallback values.
-The consumer defines them in its own `vars/common_vars.py` and wraps `run_playbook`
-so test files stay clean:
+Typically the caller wraps this in a thin helper that injects
+module-specific defaults from its own ``vars/common_vars.py``:
 
 ```python
 # Consumer's vars/common_vars.py
@@ -660,7 +644,7 @@ from omnia_auto import (
     add_session_result, print_summary_table, log,
 )
 
-# 3. Consumer defines domain constants in its own vars
+# 3. Domain constants from the module's vars
 from library.vars.common_vars import (
     DOMAIN_NAME,              # "image_build_manager"
     ENV_OMNIA_DATA_PATH,      # "OMNIA_DATA_PATH"

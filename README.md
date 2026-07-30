@@ -62,7 +62,7 @@ result = run_playbook(tag="prepare", timeout=1800)
 assert result["success"], result["error"]
 ```
 
-See **[USAGE.md](USAGE.md)** for the complete function reference.
+See **[USAGE.md](USAGE.md)** for the quick reference, and the **[docs/](docs/)** folder for detailed per-category guides with prerequisites, parameter explanations, and examples.
 
 ## Contributing
 
@@ -104,8 +104,16 @@ pip install --force-reinstall dist/omnia_auto-0.1.0-py3-none-any.whl
 omnia-auto/
 ├── pyproject.toml                  # Package metadata and dependencies
 ├── README.md                       # This file
-├── USAGE.md                        # Function reference and examples
+├── USAGE.md                        # Quick reference and getting started
 ├── LICENSE                         # Apache 2.0
+├── docs/                           # Detailed per-category usage guides
+│   ├── 01_configuration.md
+│   ├── 02_formatting.md
+│   ├── 03_host_and_config.md
+│   ├── 04_sync.md
+│   ├── 05_runner.md
+│   ├── 06_report.md
+│   └── 07_full_example.md
 └── src/omnia_auto/
     ├── __init__.py                 # Public API exports
     ├── functions/

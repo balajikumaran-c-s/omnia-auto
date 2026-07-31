@@ -27,7 +27,7 @@ full explanations, prerequisites, every parameter described, and examples.
 ### Step 1 — Install
 
 ```bash
-pip install dist/omnia_auto-0.1.0-py3-none-any.whl
+pip install omnia_auto-1.0.0-py3-none-any.whl
 ```
 
 ### Step 2 — Configure in your `conftest.py`

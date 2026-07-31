@@ -31,7 +31,7 @@ Usage::
     from omnia_auto import TestLogger, TestReport, get_testinfra_host
 """
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 
 # --- Central config ---
 from .vars.common_vars import (

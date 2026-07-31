@@ -1,11 +1,13 @@
 # omnia-auto
 
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![PyPI version](https://img.shields.io/badge/pypi-v1.0.0-blue)](https://pypi.org/project/omnia-auto/)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Typed](https://img.shields.io/badge/typing-typed-green)](https://peps.python.org/pep-0561/)
 
-Plug-and-play test automation utilities for [Dell Omnia](https://github.com/dell/omnia) modules.
+Reusable test automation utilities for [Dell Omnia](https://github.com/dell/omnia) modules.
 
-Provides reusable functions for formatting, host connectivity, playbook execution, file synchronisation, and test reporting.
+Provides formatting, host connectivity, Ansible playbook execution, file synchronisation, and HTML/JSON test reporting — all configurable by the consumer via `configure()`, with no hardcoded values.
 
 ## Features
 
@@ -17,20 +19,29 @@ Provides reusable functions for formatting, host connectivity, playbook executio
 
 ## Installation
 
-### From wheel (recommended for internal use)
+### From PyPI
 
 ```bash
-# Build the wheel
-cd omnia-auto
-python -m build --wheel
+pip install omnia-auto
+```
 
-# Install
-pip install dist/omnia_auto-0.1.0-py3-none-any.whl
+### From wheel (internal distribution)
+
+```bash
+pip install omnia_auto-1.0.0-py3-none-any.whl
+```
+
+### From Git
+
+```bash
+pip install git+https://github.com/balajikumaran-c-s/omnia-auto.git@v1.0.0
 ```
 
 ### From source (editable / development)
 
 ```bash
+git clone https://github.com/balajikumaran-c-s/omnia-auto.git
+cd omnia-auto
 pip install -e ".[dev]"
 ```
 
@@ -40,7 +51,7 @@ pip install -e ".[dev]"
 import os
 import omnia_auto
 
-# 1. Configure — consumer passes ALL settings
+# 1. Configure (once, at startup)
 omnia_auto.configure(
     module_root=os.path.dirname(__file__),
     config_file="test_config.yml",
@@ -49,20 +60,48 @@ omnia_auto.configure(
     default_timeout=3600,
 )
 
-# 2. Use
-from omnia_auto import TestLogger, load_test_config, run_playbook
+# 2. Import and use any function
+from omnia_auto import (
+    TestLogger, load_test_config, get_testinfra_host,
+    connection_params, sync_files, clone_repo,
+    run_playbook, TestReport, set_current_report,
+)
 
-log = TestLogger("Verify module deployment", "TC_001")
-log.check("Loading configuration...")
+tl = TestLogger("Verify module deployment", "TC_001")
+tl.check("Loading configuration...")
 config = load_test_config()
-log.passed(f"Config loaded for {config.get('project_name')}")
+tl.passed(f"Config loaded for {config.get('project_name')}")
 
 # 3. Run a playbook
-result = run_playbook(tag="prepare", timeout=1800)
+result = run_playbook(
+    playbook="image_build_manager.yml",
+    playbook_workdir="src/image_build_manager/playbooks",
+    tag="prepare",
+    timeout=1800,
+)
 assert result["success"], result["error"]
 ```
 
-See **[USAGE.md](USAGE.md)** for the quick reference, and the **[docs/](docs/)** folder for detailed per-category guides with prerequisites, parameter explanations, and examples.
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| **[USAGE.md](USAGE.md)** | Quick reference for all functions |
+| **[docs/](docs/)** | Detailed per-category guides with parameters, prerequisites, and examples |
+| **[PUBLISHING.md](PUBLISHING.md)** | How to build, verify, and upload to PyPI |
+| **[CHANGELOG.md](CHANGELOG.md)** | Version history and release notes |
+
+### Per-Category Guides
+
+| Guide | What it covers |
+|-------|---------------|
+| [01_configuration.md](docs/01_configuration.md) | `configure()`, `get_setting()` |
+| [02_formatting.md](docs/02_formatting.md) | `Colors`, `Symbols`, `TestLogger`, `log()`, session summary |
+| [03_host_and_config.md](docs/03_host_and_config.md) | Config loading, credentials, testinfra, `connection_params()`, remote utils |
+| [04_sync.md](docs/04_sync.md) | `clone_repo()`, `sync_files()` |
+| [05_runner.md](docs/05_runner.md) | `run_playbook()` with wrapper pattern |
+| [06_report.md](docs/06_report.md) | `TestReport`, HTML/JSON reports |
+| [07_full_example.md](docs/07_full_example.md) | Complete working conftest.py + test file |
 
 ## Contributing
 
@@ -74,37 +113,27 @@ See **[USAGE.md](USAGE.md)** for the quick reference, and the **[docs/](docs/)**
 6. **Push** — `git push origin feature/my-change`
 7. **Open a Pull Request**
 
-### Building a new wheel
+### Building and publishing
+
+See **[PUBLISHING.md](PUBLISHING.md)** for the full guide. Quick summary:
 
 ```bash
-# Clean previous builds
 rm -rf dist/ build/ src/*.egg-info
-
-# Build
-python -m build --wheel
-
-# The wheel is in dist/
-ls dist/
-# omnia_auto-0.1.0-py3-none-any.whl
-```
-
-### Installing in a consumer module
-
-```bash
-# Install from local wheel
-pip install dist/omnia_auto-0.1.0-py3-none-any.whl
-
-# Or force-reinstall after rebuild
-pip install --force-reinstall dist/omnia_auto-0.1.0-py3-none-any.whl
+python -m build
+python -m twine check dist/*
+python -m twine upload dist/*
 ```
 
 ## Project Structure
 
 ```
 omnia-auto/
-├── pyproject.toml                  # Package metadata and dependencies
-├── README.md                       # This file
-├── USAGE.md                        # Quick reference and getting started
+├── pyproject.toml                  # Package metadata and build config
+├── MANIFEST.in                     # Source distribution manifest
+├── README.md                       # This file (shown on PyPI)
+├── USAGE.md                        # Quick function reference
+├── CHANGELOG.md                    # Version history
+├── PUBLISHING.md                   # PyPI publishing guide
 ├── LICENSE                         # Apache 2.0
 ├── docs/                           # Detailed per-category usage guides
 │   ├── 01_configuration.md
@@ -115,11 +144,12 @@ omnia-auto/
 │   ├── 06_report.md
 │   └── 07_full_example.md
 └── src/omnia_auto/
-    ├── __init__.py                 # Public API exports
+    ├── __init__.py                 # Public API exports + __version__
+    ├── py.typed                    # PEP 561 type-checking marker
     ├── functions/
     │   ├── formatting_func.py      # Colors, Symbols, TestLogger, log()
-    │   ├── host_func.py            # Config, credentials, testinfra, connection_params, read_remote_env
-    │   ├── report_func.py          # TestReport (JSON + HTML)
+    │   ├── host_func.py            # Config, credentials, testinfra, connection_params
+    │   ├── report_func.py          # TestReport (JSON + interactive HTML)
     │   ├── runner_func.py          # run_playbook() with live streaming
     │   └── sync_func.py            # clone_repo(), sync_files()
     ├── vars/

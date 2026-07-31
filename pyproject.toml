@@ -7,7 +7,8 @@ name = "omnia-auto"
 version = "1.0.0"
 description = "Reusable test automation utilities for Dell Omnia — formatting, host connectivity, playbook execution, file sync, and reporting."
 readme = {file = "README.md", content-type = "text/markdown"}
-license = {file = "LICENSE"}
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [
     {name = "Balaji Kumaran", email = "balajikumaran.cs@dell.com"}
 ]
@@ -22,7 +23,6 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: System Administrators",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",

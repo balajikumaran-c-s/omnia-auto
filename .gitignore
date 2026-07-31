@@ -22,3 +22,6 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
+# Proposal docs (shared via email, not git)
+docs/proposal_*.html

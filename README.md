@@ -90,6 +90,7 @@ assert result["success"], result["error"]
 | **[docs/](docs/)** | Detailed per-category guides with parameters, prerequisites, and examples |
 | **[PUBLISHING.md](PUBLISHING.md)** | How to build, verify, and upload to PyPI |
 | **[CHANGELOG.md](CHANGELOG.md)** | Version history and release notes |
+| **[CONTRIBUTING.md](CONTRIBUTING.md)** | Coding standards, pylint rules, security checks, PR checklist |
 
 ### Per-Category Guides
 
@@ -105,13 +106,17 @@ assert result["success"], result["error"]
 
 ## Contributing
 
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for the full coding standards, pylint requirements
+(score ≥ 8.8), security rules, and PR checklist.
+
 1. **Fork** the repository
 2. **Create a branch** — `git checkout -b feature/my-change`
-3. **Make changes** and test
-4. **Build** — `python -m build --wheel`
-5. **Commit** — `git commit -s -m "feat: description"` (use `--signoff`)
-6. **Push** — `git push origin feature/my-change`
-7. **Open a Pull Request**
+3. **Make changes** and test — pylint score must stay ≥ 8.8
+4. **Security scan** — no hardcoded IPs, passwords, or tokens
+5. **Build** — `python -m build && python -m twine check dist/*`
+6. **Commit** — `git commit -s -m "feat: description"` (use `--signoff`)
+7. **Push** — `git push origin feature/my-change`
+8. **Open a Pull Request**
 
 ### Building and publishing
 
@@ -134,6 +139,7 @@ omnia-auto/
 ├── USAGE.md                        # Quick function reference
 ├── CHANGELOG.md                    # Version history
 ├── PUBLISHING.md                   # PyPI publishing guide
+├── CONTRIBUTING.md                 # Coding standards, pylint, security rules
 ├── LICENSE                         # Apache 2.0
 ├── docs/                           # Detailed per-category usage guides
 │   ├── 01_configuration.md

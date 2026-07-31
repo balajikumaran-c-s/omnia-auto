@@ -27,13 +27,14 @@ Usage from a consumer module::
 
     # SSH clone
     clone_repo(mode="ssh", url="https://…", dest="/root/repo",
-               ip="10.0.0.1", user="root", password="secret",
-               ssh_opts="-o StrictHostKeyChecking=no")
+               ip=conn["ip"], user=conn["user"],
+               password=conn["password"],
+               ssh_opts=conn["ssh_opts"])
 
     # Sync a directory over SSH
     sync_files(mode="ssh", src="/local/dir", dest="/remote/dir",
-               ip="10.0.0.1", user="root",
-               ssh_opts="-o StrictHostKeyChecking=no")
+               ip=conn["ip"], user=conn["user"],
+               ssh_opts=conn["ssh_opts"])
 """
 
 import os
